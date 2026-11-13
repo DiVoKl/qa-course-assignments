@@ -1,0 +1,9 @@
+# Build output
+out/
+*.class
+
+# IntelliJ per-user files (project config in .idea/ is committed)
+.idea/workspace.xml
+.idea/usage.statistics.xml
+.idea/shelf/
+.idea/tasks.xml
