@@ -1,9 +1,14 @@
 package factory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -24,6 +29,11 @@ class SalarySorterTest {
                 new Employee(4, "D", "D", "d@d.com", "050-4444444", "Addr4", 3000),
                 new Employee(5, "E", "E", "e@e.com", "050-5555555", "Addr5", 4500)
         };
+    }
+
+    private static Employee createEmployee(int id, int salary) {
+        return new Employee(id, "Test", "Employee", "test@example.com",
+                "050-0000000", "Test Address", salary);
     }
 
     private static Employee[] copyOf(Employee[] source) {
@@ -151,5 +161,79 @@ class SalarySorterTest {
 
         assertNoRecordsLost(backup, sorted);
         assertSortedBySalary(sorted);
+    }
+
+    @Test
+    void sortNullArrayReturnsNull() {
+        assertNull(SalarySorter.sort(null));
+    }
+
+    @Test
+    void sortReturnsTheSameArrayInstanceAfterSortingDescendingInput() {
+        Employee[] employees = new Employee[]{
+                createEmployee(4, 400),
+                createEmployee(3, 300),
+                createEmployee(2, 200),
+                createEmployee(1, 100)
+        };
+
+        Employee[] sorted = SalarySorter.sort(employees);
+
+        assertSame(employees, sorted);
+        assertEquals(1, sorted[0].getId());
+        assertEquals(2, sorted[1].getId());
+        assertEquals(3, sorted[2].getId());
+        assertEquals(4, sorted[3].getId());
+    }
+
+    @Test
+    void sortKeepsEmployeesWithEqualSalariesInTheirOriginalOrder() {
+        Employee[] employees = new Employee[]{
+                createEmployee(1, 500),
+                createEmployee(2, 200),
+                createEmployee(3, 500),
+                createEmployee(4, 500),
+                createEmployee(5, 100)
+        };
+
+        Employee[] sorted = SalarySorter.sort(employees);
+
+        int[] expectedIds = {5, 2, 1, 3, 4};
+        for (int i = 0; i < expectedIds.length; i++) {
+            assertEquals(expectedIds[i], sorted[i].getId());
+        }
+    }
+
+    @Test
+    void sortHandlesNegativeAndExtremeSalaryValues() {
+        Employee[] employees = new Employee[]{
+                createEmployee(1, Integer.MAX_VALUE),
+                createEmployee(2, 0),
+                createEmployee(3, Integer.MIN_VALUE),
+                createEmployee(4, -1)
+        };
+
+        Employee[] sorted = SalarySorter.sort(employees);
+
+        int[] expectedIds = {3, 4, 2, 1};
+        for (int i = 0; i < expectedIds.length; i++) {
+            assertEquals(expectedIds[i], sorted[i].getId());
+        }
+    }
+
+    @Test
+    void sortPrintsOnlyElapsedMilliseconds() {
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
+
+        try (PrintStream temporaryOut = new PrintStream(capturedOutput)) {
+            System.setOut(temporaryOut);
+            SalarySorter.sort(createSampleArray());
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertTrue(capturedOutput.toString().matches("\\d+[.,]\\d{3} ms\\r?\\n"),
+                "Expected only one elapsed-time value, but got: " + capturedOutput);
     }
 }

@@ -1,7 +1,7 @@
 # Employee Salary Tracking System (TDD)
 
-A Java system for a factory that generates 10,000 random employees, sorts them by
-monthly salary (ascending) and prints the report. The `sort` function was built
+A Java system for a factory that generates 10,000 random employees and sorts them by
+monthly salary (ascending). The program prints only the sort duration. The `sort` function was built
 with TDD (Red → Green → Refactor). Bubble Sort came first, then a refactor to Merge Sort.
 
 ## Projects
