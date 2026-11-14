@@ -1,7 +1,10 @@
 package factory;
 
 /**
- * Sorts employees in ascending order of monthly salary.
+ * Sorts employee arrays by monthly salary in ascending order.
+ *
+ * The active implementation is stable Merge Sort, with O(n log n) time and
+ * O(n) auxiliary space. Sorting is performed in place on the supplied array.
  */
 public class SalarySorter {
 
@@ -60,9 +63,16 @@ public class SalarySorter {
     }
     */
 
-    // Version 4 (TDD - Refactor stage, ACTIVE): Merge Sort, O(n log n).
-    // Stable (equal salaries keep their original order) and uses no built-in
-    // sorting functions.
+    /**
+     * Sorts the given array in place and prints the elapsed time in milliseconds.
+     *
+     * Equal-salary employees retain their input order. A {@code null} array is
+     * returned unchanged and does not produce timing output.
+     *
+     * @param employees array to sort
+     * @return the same array instance, sorted by ascending monthly salary, or
+     *         {@code null} when the input is {@code null}
+     */
     public static Employee[] sort(Employee[] employees) {
         if (employees == null) {
             return null;
@@ -70,6 +80,7 @@ public class SalarySorter {
 
         long startTime = System.nanoTime();
 
+        // Arrays of length zero or one are already sorted.
         if (employees.length > 1) {
             Employee[] buffer = new Employee[employees.length];
             mergeSort(employees, buffer, 0, employees.length - 1);
@@ -81,6 +92,14 @@ public class SalarySorter {
         return employees;
     }
 
+    /**
+     * Recursively sorts the inclusive range {@code [left, right]}.
+     *
+     * @param arr array being sorted
+     * @param buffer reusable temporary storage for merging
+     * @param left first index in the current range
+     * @param right last index in the current range
+     */
     private static void mergeSort(Employee[] arr, Employee[] buffer, int left, int right) {
         if (left >= right) {
             return;
@@ -90,6 +109,7 @@ public class SalarySorter {
         mergeSort(arr, buffer, left, middle);
         mergeSort(arr, buffer, middle + 1, right);
 
+        // The two halves are already ordered relative to each other; no merge is needed.
         if (arr[middle].getMonthlySalary() <= arr[middle + 1].getMonthlySalary()) {
             return;
         }
@@ -97,7 +117,19 @@ public class SalarySorter {
         merge(arr, buffer, left, middle, right);
     }
 
+    /**
+     * Merges two sorted adjacent ranges back into {@code arr}.
+     *
+     * Choosing from the left range on equal salaries preserves stable order.
+     *
+     * @param arr array receiving the merged range
+     * @param buffer temporary storage used to avoid overwriting unread values
+     * @param left first index in the left range
+     * @param middle last index in the left range
+     * @param right last index in the right range
+     */
     private static void merge(Employee[] arr, Employee[] buffer, int left, int middle, int right) {
+        // Copy both halves before writing merged values into the original array.
         for (int k = left; k <= right; k++) {
             buffer[k] = arr[k];
         }
@@ -114,6 +146,8 @@ public class SalarySorter {
             }
         }
 
+        // Any remaining values can only be in the left half; the right half is
+        // already in its final position when it is exhausted first.
         while (i <= middle) {
             arr[k++] = buffer[i++];
         }

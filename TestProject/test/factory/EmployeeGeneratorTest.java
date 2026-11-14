@@ -5,13 +5,16 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for {@link EmployeeGenerator}.
+ * Verifies the employee generator's default size, required fields, salary
+ * range, sequential unique IDs, and input validation.
  */
 class EmployeeGeneratorTest {
 
+    /** The no-argument overload should produce the assignment's standard dataset. */
     @Test
     void generatesTenThousandEmployeesByDefault() {
         Employee[] employees = EmployeeGenerator.generateEmployees();
@@ -19,6 +22,7 @@ class EmployeeGeneratorTest {
         assertEquals(10000, employees.length);
     }
 
+    /** Generated employee objects should be present and have all seven attributes populated. */
     @Test
     void everyEmployeeHasAllSevenFieldsFilled() {
         for (Employee e : EmployeeGenerator.generateEmployees(1000)) {
@@ -32,6 +36,7 @@ class EmployeeGeneratorTest {
         }
     }
 
+    /** Every generated salary must include a value within the configured inclusive range. */
     @Test
     void salariesAreBetween3000And15000() {
         for (Employee e : EmployeeGenerator.generateEmployees()) {
@@ -40,6 +45,7 @@ class EmployeeGeneratorTest {
         }
     }
 
+    /** Sequential IDs must start at FIRST_ID and remain unique throughout the array. */
     @Test
     void idsAreUnique() {
         Employee[] employees = EmployeeGenerator.generateEmployees();
@@ -49,6 +55,14 @@ class EmployeeGeneratorTest {
         }
     }
 
+    /** A negative requested count is invalid and should fail with a clear argument exception. */
+    @Test
+    void negativeEmployeeCountIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> EmployeeGenerator.generateEmployees(-1));
+    }
+
+    /** Treats null and whitespace-only strings as missing test data. */
     private static boolean isBlank(String s) {
         return s == null || s.trim().isEmpty();
     }

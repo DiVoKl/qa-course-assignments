@@ -12,15 +12,15 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for {@link SalarySorter#sort(Employee[])}.
+ * Tests the sorter's return value, record preservation, ascending order,
+ * stability, edge cases, and timing output.
  *
- * The two mandatory requirements from the assignment:
- *   1. sort returns a value (not null).
- *   2. the returned array lost no records and is sorted by salary.
+ * The assignment's core requirements are that sorting returns an array without
+ * losing employees and orders the records by monthly salary.
  */
 class SalarySorterTest {
 
-    /** A small deterministic array with known, unsorted salaries. */
+    /** Builds a small deterministic input used by tests that need known salaries. */
     private static Employee[] createSampleArray() {
         return new Employee[]{
                 new Employee(1, "A", "A", "a@a.com", "050-1111111", "Addr1", 12000),
@@ -31,11 +31,13 @@ class SalarySorterTest {
         };
     }
 
+    /** Creates a test employee with the requested ID and salary. */
     private static Employee createEmployee(int id, int salary) {
         return new Employee(id, "Test", "Employee", "test@example.com",
                 "050-0000000", "Test Address", salary);
     }
 
+    /** Copies array references so in-place sorting does not alter the test snapshot. */
     private static Employee[] copyOf(Employee[] source) {
         Employee[] copy = new Employee[source.length];
         for (int i = 0; i < source.length; i++) {
@@ -44,13 +46,15 @@ class SalarySorterTest {
         return copy;
     }
 
-    /** Asserts that every employee in {@code original} appears in {@code sorted} and nothing was added. */
+    /**
+     * Verifies the result has the same number of employees and contains each
+     * original ID exactly once.
+     */
     private static void assertNoRecordsLost(Employee[] original, Employee[] sorted) {
         assertNotNull(sorted, "sort returned null");
         assertEquals(original.length, sorted.length, "Employee count changed after sorting");
 
-        // Each original employee must be matched by exactly one sorted slot that
-        // hasn't been used yet, so the result is a true permutation of the input.
+        // Track matched slots to detect both dropped and duplicated employee IDs.
         boolean[] used = new boolean[sorted.length];
         for (Employee originalEmp : original) {
             boolean found = false;
@@ -65,6 +69,7 @@ class SalarySorterTest {
         }
     }
 
+    /** Checks adjacent values because a non-decreasing array is sorted ascending. */
     private static void assertSortedBySalary(Employee[] sorted) {
         for (int i = 0; i < sorted.length - 1; i++) {
             assertTrue(sorted[i].getMonthlySalary() <= sorted[i + 1].getMonthlySalary(),
@@ -77,6 +82,7 @@ class SalarySorterTest {
     // Requirement 1: the function returns a value
     // ---------------------------------------------------------------------
 
+    /** Sorting a valid sample should return a non-null result. */
     @Test
     void sortReturnsNonNullValue() {
         Employee[] result = SalarySorter.sort(createSampleArray());
@@ -88,6 +94,7 @@ class SalarySorterTest {
     // Requirement 2: no records lost, and the array is sorted
     // ---------------------------------------------------------------------
 
+    /** Sorting must preserve every employee ID from the input. */
     @Test
     void sortDoesNotLoseRecords() {
         Employee[] original = createSampleArray();
@@ -98,6 +105,7 @@ class SalarySorterTest {
         assertNoRecordsLost(backup, sorted);
     }
 
+    /** The result must be in ascending salary order. */
     @Test
     void sortReturnsArraySortedBySalaryAscending() {
         Employee[] sorted = SalarySorter.sort(createSampleArray());
@@ -106,6 +114,7 @@ class SalarySorterTest {
         assertSortedBySalary(sorted);
     }
 
+    /** Known salary values ensure the sample is ordered into the expected exact sequence. */
     @Test
     void sortPutsSampleSalariesInExpectedOrder() {
         Employee[] sorted = SalarySorter.sort(createSampleArray());
@@ -117,6 +126,7 @@ class SalarySorterTest {
         }
     }
 
+    /** A full-size generated dataset must remain intact and become salary-sorted. */
     @Test
     void sortTenThousandGeneratedEmployeesKeepsAllRecordsAndIsSorted() {
         Employee[] original = EmployeeGenerator.generateEmployees(EmployeeGenerator.NUM_EMPLOYEES);
@@ -132,6 +142,7 @@ class SalarySorterTest {
     // Edge cases
     // ---------------------------------------------------------------------
 
+    /** An empty input is valid and should remain an empty, non-null array. */
     @Test
     void sortEmptyArrayReturnsEmptyArray() {
         Employee[] sorted = SalarySorter.sort(new Employee[0]);
@@ -140,6 +151,7 @@ class SalarySorterTest {
         assertEquals(0, sorted.length);
     }
 
+    /** A one-element input requires no reordering and must retain that employee. */
     @Test
     void sortSingleEmployeeReturnsSameEmployee() {
         Employee only = new Employee(7, "X", "Y", "x@y.com", "050-7777777", "Addr7", 8000);
@@ -151,6 +163,7 @@ class SalarySorterTest {
         assertEquals(7, sorted[0].getId());
     }
 
+    /** Sorting an already ordered input should preserve its ordering and records. */
     @Test
     void sortAlreadySortedArrayStaysSorted() {
         Employee[] input = SalarySorter.sort(createSampleArray());
@@ -163,11 +176,13 @@ class SalarySorterTest {
         assertSortedBySalary(sorted);
     }
 
+    /** Documents the sorter's current null-input behavior. */
     @Test
     void sortNullArrayReturnsNull() {
         assertNull(SalarySorter.sort(null));
     }
 
+    /** The sorter works in place and returns the original array object. */
     @Test
     void sortReturnsTheSameArrayInstanceAfterSortingDescendingInput() {
         Employee[] employees = new Employee[]{
@@ -186,6 +201,40 @@ class SalarySorterTest {
         assertEquals(4, sorted[3].getId());
     }
 
+    /** A reverse-ordered 1,000-item input exercises sorting beyond the small examples. */
+    @Test
+    void sortHandlesReverseOrderedInputOfOneThousandEmployees() {
+        Employee[] employees = new Employee[1000];
+        for (int i = 0; i < employees.length; i++) {
+            employees[i] = createEmployee(i + 1, employees.length - i);
+        }
+        Employee[] backup = copyOf(employees);
+
+        Employee[] sorted = SalarySorter.sort(employees);
+
+        assertNoRecordsLost(backup, sorted);
+        assertSortedBySalary(sorted);
+    }
+
+    /** The minimum and maximum generator salaries sort correctly with duplicates. */
+    @Test
+    void sortHandlesExactSalaryRangeBoundaries() {
+        Employee[] employees = new Employee[]{
+                createEmployee(1, EmployeeGenerator.MAX_SALARY),
+                createEmployee(2, EmployeeGenerator.MIN_SALARY),
+                createEmployee(3, EmployeeGenerator.MAX_SALARY),
+                createEmployee(4, EmployeeGenerator.MIN_SALARY)
+        };
+
+        Employee[] sorted = SalarySorter.sort(employees);
+
+        int[] expectedIds = {2, 4, 1, 3};
+        for (int i = 0; i < expectedIds.length; i++) {
+            assertEquals(expectedIds[i], sorted[i].getId());
+        }
+    }
+
+    /** Equal salaries must not change the employees' original relative order. */
     @Test
     void sortKeepsEmployeesWithEqualSalariesInTheirOriginalOrder() {
         Employee[] employees = new Employee[]{
@@ -204,6 +253,7 @@ class SalarySorterTest {
         }
     }
 
+    /** Integer boundary values verify comparisons do not overflow or truncate salaries. */
     @Test
     void sortHandlesNegativeAndExtremeSalaryValues() {
         Employee[] employees = new Employee[]{
@@ -221,6 +271,7 @@ class SalarySorterTest {
         }
     }
 
+    /** Captures standard output to ensure sorting prints only its elapsed-time value. */
     @Test
     void sortPrintsOnlyElapsedMilliseconds() {
         PrintStream originalOut = System.out;
