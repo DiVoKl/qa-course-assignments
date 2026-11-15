@@ -78,6 +78,36 @@ class SalarySorterTest {
         }
     }
 
+    /** Captures only the output produced by the operation under test. */
+    private static String captureStandardOutput(Runnable operation) {
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
+
+        try (PrintStream temporaryOut = new PrintStream(capturedOutput)) {
+            System.setOut(temporaryOut);
+            operation.run();
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        return capturedOutput.toString();
+    }
+
+    /** Checks that each output line reports a parseable, non-negative duration. */
+    private static void assertValidTimingOutput(String output, int expectedLineCount) {
+        String[] lines = output.split("\\r?\\n");
+        assertEquals(expectedLineCount, lines.length, "Unexpected number of timing lines");
+
+        for (String line : lines) {
+            assertTrue(line.matches("\\d+[.,]\\d{3} ms"),
+                    "Expected elapsed milliseconds, but got: " + line);
+            double milliseconds = Double.parseDouble(line.substring(0, line.length() - 3)
+                    .replace(',', '.'));
+            assertTrue(milliseconds >= 0 && !Double.isInfinite(milliseconds),
+                    "Elapsed time must be finite and non-negative: " + line);
+        }
+    }
+
     // ---------------------------------------------------------------------
     // Requirement 1: the function returns a value
     // ---------------------------------------------------------------------
@@ -179,7 +209,9 @@ class SalarySorterTest {
     /** Documents the sorter's current null-input behavior. */
     @Test
     void sortNullArrayReturnsNull() {
-        assertNull(SalarySorter.sort(null));
+        String output = captureStandardOutput(() -> assertNull(SalarySorter.sort(null)));
+
+        assertEquals("", output, "Null input should not produce timing output");
     }
 
     /** The sorter works in place and returns the original array object. */
@@ -234,6 +266,24 @@ class SalarySorterTest {
         }
     }
 
+    /** Repeated IDs must not hide lost or substituted employee objects. */
+    @Test
+    void sortPreservesExactEmployeeObjectsWhenIdsAreRepeated() {
+        Employee first = createEmployee(1, 500);
+        Employee second = createEmployee(1, 200);
+        Employee third = createEmployee(2, 500);
+        Employee fourth = createEmployee(1, 100);
+        Employee[] employees = {first, second, third, fourth};
+
+        Employee[] sorted = SalarySorter.sort(employees);
+
+        assertSame(employees, sorted);
+        assertSame(fourth, sorted[0]);
+        assertSame(second, sorted[1]);
+        assertSame(first, sorted[2]);
+        assertSame(third, sorted[3]);
+    }
+
     /** Equal salaries must not change the employees' original relative order. */
     @Test
     void sortKeepsEmployeesWithEqualSalariesInTheirOriginalOrder() {
@@ -274,17 +324,19 @@ class SalarySorterTest {
     /** Captures standard output to ensure sorting prints only its elapsed-time value. */
     @Test
     void sortPrintsOnlyElapsedMilliseconds() {
-        PrintStream originalOut = System.out;
-        ByteArrayOutputStream capturedOutput = new ByteArrayOutputStream();
+        String output = captureStandardOutput(() -> SalarySorter.sort(createSampleArray()));
 
-        try (PrintStream temporaryOut = new PrintStream(capturedOutput)) {
-            System.setOut(temporaryOut);
-            SalarySorter.sort(createSampleArray());
-        } finally {
-            System.setOut(originalOut);
-        }
+        assertValidTimingOutput(output, 1);
+    }
 
-        assertTrue(capturedOutput.toString().matches("\\d+[.,]\\d{3} ms\\r?\\n"),
-                "Expected only one elapsed-time value, but got: " + capturedOutput);
+    /** Valid inputs, including empty and single-item arrays, report a valid duration. */
+    @Test
+    void sortReportsTimingForEmptyAndSingleEmployeeArrays() {
+        String output = captureStandardOutput(() -> {
+            SalarySorter.sort(new Employee[0]);
+            SalarySorter.sort(new Employee[]{createEmployee(1, 100)});
+        });
+
+        assertValidTimingOutput(output, 2);
     }
 }
